@@ -3,7 +3,9 @@ Dùng:  python tools/check_numbers.py [thư_mục_results]"""
 import os, sys, pandas as pd
 
 d = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "results")
-s = pd.read_csv(os.path.join(d, "summary.csv")); f = pd.read_csv(os.path.join(d, "flags.csv"))
+s = pd.read_csv(os.path.join(d, "summary.csv")); # failure_case.md trích số của LUẬT CŨ -> đọc flags_old.csv nếu có (flags.csv giờ là luật mới, chỉ ảnh test)
+fo = os.path.join(d, "flags_old.csv")
+f = pd.read_csv(fo if os.path.exists(fo) else os.path.join(d, "flags.csv"))
 b = s[s.cond == "baseline"].iloc[0]
 print(f"baseline: blur_score={b.blur_score:.1f}  orb_kp={b.orb_kp:.0f}  entropy={b.entropy:.2f}  mean_gray={b.mean_gray:.1f}")
 for c, lv in [("noise", 1), ("noise", 2), ("noise", 3), ("noise", 4), ("rain", 4), ("night", 1), ("glare", 1), ("glare", 4)]:

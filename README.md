@@ -9,7 +9,7 @@ python src/run_benchmark.py --n 12 --seed 0     # ~vài chục giây, CPU
 ```
 - Nếu `data/images/` có ảnh `.jpg/.png` thì dùng ảnh đó (giữ nguyên độ phân giải, hoặc `--width 640` để resize); nếu rỗng thì dùng **cảnh đường tổng hợp** (`src/make_scene.py`). Chỉ dùng ảnh được phép chia sẻ.
 - Đối chiếu số trong `notes/failure_case.md`: `python tools/check_numbers.py`.
-- Đầu ra trong `results/`: `metrics.csv` (từng ảnh), `summary.csv`, `flags.csv`, `trend.png`, `before_after.png`, `run.log`.
+- Đầu ra trong `results/`: `metrics.csv` (từng ảnh), `summary.csv`, `flags_old.csv` (luật cũ, mọi ảnh), `flags.csv` (luật mới, ảnh test), `flags_compare.csv`, `latency.csv`, `trend.png`, `before_after.png`, `run.log`.
 - Phiên bản đã chạy: xem dòng đầu `results/run.log`.
 
 ## Cấu trúc
@@ -17,8 +17,9 @@ python src/run_benchmark.py --n 12 --seed 0     # ~vài chục giây, CPU
 |---|---|
 | `PLAN.md` | Bước 1-3: claim, metric, nguồn, thiết kế benchmark, phân công |
 | `notes/failure_case.md` | Bước 5: failure case, limitation, cải tiến |
+| `notes/improvement.md` | Vai C: kiểm tra metric, luật cờ mới, kết quả trước/sau, latency, trade-off |
 | `src/degrade.py` | 5 loại lỗi × 4 mức (blur, night, glare, noise, rain) |
-| `src/metrics.py` | 5 metric: blur_score, sat_ratio, entropy, mean_gray, orb_kp |
+| `src/metrics.py` | 8 metric: blur_score, sat_ratio, entropy, mean_gray, orb_kp + (cải tiến) noise_sigma, blur_norm, streak_ratio |
 | `src/run_benchmark.py` | chạy toàn bộ, ghi bảng/plot/log |
-| `reports/` | (chưa làm) 5 bản báo cáo/slide riêng của 5 thành viên |
-| `TEAMMATES.md` | họ tên + MSSV 5 thành viên |
+| `reports/` | (chưa làm) 3 bản báo cáo/slide riêng của 3 thành viên |
+| `TEAMMATES.md` | họ tên + MSSV 3 thành viên |
