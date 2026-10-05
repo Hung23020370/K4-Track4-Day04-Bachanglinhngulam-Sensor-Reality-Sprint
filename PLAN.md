@@ -8,7 +8,7 @@
 | Claim ban đầu | Cùng một ảnh, tăng mức blur/night/glare → blur_score và số keypoint ORB giảm; glare → sat_ratio tăng. **Giả thuyết cần kiểm tra:** noise và rain có làm blur_score giảm như blur không? |
 | Metric và đơn vị | blur_score = var(Laplacian ảnh xám), không đơn vị; sat_ratio = tỷ lệ pixel xám ≥ 250; entropy (bit); mean_gray (0-255); orb_kp = số keypoint ORB (proxy) |
 | Baseline và điều kiện lỗi | Baseline = ảnh gốc không lỗi; 5 loại lỗi × 4 mức, mỗi mức đặt tên theo tham số thật |
-| Phân công 5 thành viên | Xem bảng cuối file |
+| Phân công 4 thành viên | Xem bảng cuối file |
 
 Ghi chú trung thực: phần "noise/rain làm blur_score *tăng*" là điều nhóm **quan sát sau khi chạy**, không phải dự đoán trước.
 
@@ -52,9 +52,9 @@ Luật cờ (health rule) dùng để đo "metric có phát hiện được lỗ
 ## Phân công 3 thành viên (điền tên)
 | Vai | Người | Việc chính | Phụ trách pitch |
 |---|---|---|---|
-| A · Nguồn & phân tích | | Đọc paper/repo, điền các ô `____` ở Bước 2; viết/kiểm tra `notes/failure_case.md` (tách rõ: tự đo / nguồn nói / giả thuyết); trade-off | Problem + Failure case |
+| A · Nguồn & dữ liệu | | Đọc paper/repo và điền mọi ô ____ ở Bước 2. Ghi nguồn và giấy phép của 12 ảnh. Điền TEAMMATES.md | Problem + Failure case |
 | B · Dữ liệu & chạy benchmark | | Kiểm tra `degrade.py` (tham số có thực tế không); tìm ảnh thật cho `data/images/` nếu có; chạy lại, lưu log/plot, đối chiếu số trong `failure_case.md` | Benchmark |
-| C · Metric & cải tiến | | Kiểm tra `metrics.py` + luật cờ; làm cải tiến (ước lượng nhiễu, chuẩn hoá theo độ sáng); nếu còn thời gian thêm detector confidence; giữ repo gọn, điền `TEAMMATES.md` | Method + Engineering decision |
+| C · Failure case & trade-off | | Kiểm tra `metrics.py` + luật cờ; làm cải tiến (ước lượng nhiễu, chuẩn hoá theo độ sáng); nếu còn thời gian thêm detector confidence; giữ repo gọn, điền `TEAMMATES.md` | Method + Engineering decision |
 
 Cả 3 người đều nộp báo cáo/slide riêng nên mỗi người phải giải thích được toàn bộ luồng, không chỉ phần mình.
 
