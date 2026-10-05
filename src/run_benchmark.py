@@ -1,8 +1,9 @@
 """T1 - Sức khoẻ camera ADAS: baseline vs 5 loại lỗi x 4 mức.
 Chạy:  python src/run_benchmark.py            (dùng data/images/* nếu có, ngược lại cảnh tổng hợp)
        python src/run_benchmark.py --n 12 --seed 0
-Đầu ra trong results/: metrics.csv, summary.csv, flags.csv, trend.png, before_after.png, run.log"""
-import argparse, glob, os, platform, sys
+Đầu ra trong results/: metrics.csv, summary.csv, flags_old.csv, flags.csv, flags_compare.csv,
+latency.csv, trend.png, before_after.png, run.log"""
+import argparse, glob, os, platform, sys, time
 import cv2, numpy as np, pandas as pd
 import matplotlib
 matplotlib.use("Agg")
@@ -11,12 +12,15 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, os.path.dirname(__file__))
 from degrade import DEGRADATIONS
 from make_scene import make_scene
-from metrics import compute
+from metrics import METRIC_FNS, compute, gray
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "results")
-METRICS = ["blur_score", "sat_ratio", "entropy", "mean_gray", "orb_kp"]
+METRICS = list(METRIC_FNS)
 SAT_THR = 0.05          # luật chói: >5% pixel gần trắng (ngưỡng đặt tay, chưa hiệu chuẩn)
+NOISE_K = 2.0           # luật nhiễu mới: noise_sigma > NOISE_K x median baseline (đặt trước khi chạy)
+RAIN_K = 2.0            # luật mưa mới: streak_ratio > RAIN_K x median baseline và KHÔNG có cờ nhiễu
+FLAG_COLS = ["flag_blur", "flag_dark", "flag_glare", "flag_noise", "flag_rain", "flag_any"]
 LOG = []
 
 
@@ -70,31 +74,89 @@ def main():
     base = df[df.cond == "baseline"][METRICS].mean()
     summ = df.groupby(["cond", "level", "param"], as_index=False)[METRICS].mean()
     for m in METRICS:
-        summ[f"d_{m}_%"] = (summ[m] / base[m] - 1) * 100
+        summ[f"d_{m}_%"] = (summ[m] / base[m] - 1) * 100 if base[m] != 0 else np.nan  # baseline 0 -> không tính %
     order = ["baseline"] + list(DEGRADATIONS)
     summ["o"] = summ.cond.map(order.index)
     summ = summ.sort_values(["o", "level"]).drop(columns="o")
     summ.to_csv(os.path.join(OUT, "summary.csv"), index=False)
     pd.set_option("display.width", 200, "display.max_columns", 30, "display.float_format", "{:.4g}".format)
     log("\n== Trung bình theo điều kiện (so với baseline) ==")
-    log(summ[["cond", "level", "param"] + METRICS + ["d_blur_score_%", "d_orb_kp_%"]].to_string(index=False))
+    log(summ[["cond", "level", "param"] + METRICS + ["d_blur_score_%", "d_blur_norm_%", "d_noise_sigma_%", "d_streak_ratio_%"]].to_string(index=False))
 
-    # ---- luật sức khoẻ camera: hiệu chuẩn ngưỡng trên baseline (in-sample, xem limitation)
-    blur_thr = 0.5 * df[df.cond == "baseline"].blur_score.median()
-    dark_thr = 0.5 * df[df.cond == "baseline"].mean_gray.median()
-    df["flag_blur"] = df.blur_score < blur_thr
-    df["flag_dark"] = df.mean_gray < dark_thr
-    df["flag_glare"] = df.sat_ratio > SAT_THR
-    df["flag_any"] = df[["flag_blur", "flag_dark", "flag_glare"]].any(axis=1)
-    flags = df.groupby(["cond", "level", "param"], as_index=False)[["flag_blur", "flag_dark", "flag_glare", "flag_any"]].mean()
-    flags["o"] = flags.cond.map(order.index)
-    flags = flags.sort_values(["o", "level"]).drop(columns="o")
+    order_map = {c: k for k, c in enumerate(order)}
+
+    def rate(d, cols):
+        r = d.groupby(["cond", "level", "param"], as_index=False)[cols].mean()
+        r["o"] = r.cond.map(order_map)
+        return r.sort_values(["o", "level"]).drop(columns="o")
+
+    # ---- LUẬT CŨ (giữ nguyên để so sánh): ngưỡng hiệu chuẩn trên toàn bộ baseline (in-sample)
+    b_all = df[df.cond == "baseline"]
+    blur_thr = 0.5 * b_all.blur_score.median()
+    dark_thr = 0.5 * b_all.mean_gray.median()
+    old = df.copy()
+    old["flag_blur"] = old.blur_score < blur_thr
+    old["flag_dark"] = old.mean_gray < dark_thr
+    old["flag_glare"] = old.sat_ratio > SAT_THR
+    old["flag_any"] = old[["flag_blur", "flag_dark", "flag_glare"]].any(axis=1)
+    flags_old = rate(old, ["flag_blur", "flag_dark", "flag_glare", "flag_any"])
+    flags_old.to_csv(os.path.join(OUT, "flags_old.csv"), index=False)
+    log(f"\n== LUẬT CŨ (tỷ lệ frame bị gắn cờ, mọi ảnh, in-sample). Ngưỡng: blur_score < {blur_thr:.1f}; "
+        f"mean_gray < {dark_thr:.1f}; sat_ratio > {SAT_THR} ==")
+    log(flags_old.to_string(index=False))
+
+    # ---- LUẬT MỚI: hiệu chuẩn trên nửa đầu ảnh (calib), báo cáo trên nửa sau (test) -> không in-sample
+    n_cal = len(imgs) // 2
+    cal_base = df[(df.cond == "baseline") & (df.img < n_cal)]
+    bn_thr = 0.5 * cal_base.blur_norm.median()
+    dark_thr2 = 0.5 * cal_base.mean_gray.median()
+    noise_thr = NOISE_K * cal_base.noise_sigma.median()
+    rain_thr = RAIN_K * cal_base.streak_ratio.median()
+    new = df.copy()
+    new["flag_blur"] = new.blur_norm < bn_thr
+    new["flag_dark"] = new.mean_gray < dark_thr2
+    new["flag_glare"] = new.sat_ratio > SAT_THR
+    new["flag_noise"] = new.noise_sigma > noise_thr
+    new["flag_rain"] = (new.streak_ratio > rain_thr) & ~new.flag_noise
+    new["flag_any"] = new[FLAG_COLS[:5]].any(axis=1)
+    test = new[new.img >= n_cal]
+    flags = rate(test, FLAG_COLS)
     flags.to_csv(os.path.join(OUT, "flags.csv"), index=False)
-    log(f"\n== Luật cờ (tỷ lệ frame bị gắn cờ). Ngưỡng: blur_score < {blur_thr:.1f}; mean_gray < {dark_thr:.1f}; sat_ratio > {SAT_THR} ==")
+    log(f"\n== LUẬT MỚI (tỷ lệ cờ trên ảnh TEST {n_cal}..{len(imgs) - 1}; ngưỡng hiệu chuẩn trên baseline ảnh "
+        f"0..{n_cal - 1}). Ngưỡng: blur_norm < {bn_thr:.4g}; mean_gray < {dark_thr2:.1f}; sat_ratio > {SAT_THR}; "
+        f"noise_sigma > {noise_thr:.2f} (= {NOISE_K} x median {cal_base.noise_sigma.median():.2f}); "
+        f"streak_ratio > {rain_thr:.4f} (= {RAIN_K} x median) và không có cờ nhiễu ==")
     log(flags.to_string(index=False))
 
+    # ---- so sánh cũ vs mới trên CÙNG ảnh test (luật cũ vẫn dùng ngưỡng cũ)
+    cmp_ = rate(old[old.img >= n_cal], ["flag_blur", "flag_any"]).rename(
+        columns={"flag_blur": "old_blur", "flag_any": "old_any"})
+    cmp_ = cmp_.merge(flags[["cond", "level", "flag_blur", "flag_noise", "flag_rain", "flag_any"]].rename(
+        columns={"flag_blur": "new_blur", "flag_noise": "new_noise", "flag_rain": "new_rain", "flag_any": "new_any"}),
+        on=["cond", "level"])
+    cmp_.to_csv(os.path.join(OUT, "flags_compare.csv"), index=False)
+    log("\n== So sánh tỷ lệ cờ cũ vs mới trên ảnh test ==")
+    log(cmp_.to_string(index=False))
+
+    # ---- latency từng metric (ms/frame, CPU, đo trên ảnh baseline, lặp 20 lần)
+    lat = []
+    for m, fn in METRIC_FNS.items():
+        ts = []
+        for im in imgs:
+            g = gray(im)
+            fn(g)  # warm-up
+            t0 = time.perf_counter()
+            for _ in range(20):
+                fn(g)
+            ts.append((time.perf_counter() - t0) / 20 * 1000)
+        lat.append({"metric": m, "ms_per_frame_mean": np.mean(ts), "ms_per_frame_max": np.max(ts)})
+    lat = pd.DataFrame(lat)
+    lat.to_csv(os.path.join(OUT, "latency.csv"), index=False)
+    log(f"\n== Latency (ms/frame, ảnh {imgs[0].shape[1]}x{imgs[0].shape[0]}, CPU {platform.processor() or platform.machine()}) ==")
+    log(lat.to_string(index=False))
+
     # ---- plot xu hướng: hàng = metric, cột = loại lỗi
-    fig, axs = plt.subplots(len(METRICS), len(DEGRADATIONS), figsize=(18, 11), sharex="col")
+    fig, axs = plt.subplots(len(METRICS), len(DEGRADATIONS), figsize=(18, 16), sharex="col")
     for c, (name, (_, params, unit)) in enumerate(DEGRADATIONS.items()):
         for r, m in enumerate(METRICS):
             ax = axs[r, c]
@@ -102,7 +164,7 @@ def main():
             mu, sd = g.mean(), g.std()
             ax.errorbar(mu.index, mu.values, yerr=sd.values, marker="o", capsize=3)
             ax.axhline(base[m], ls="--", c="gray", lw=0.8)
-            if m == "blur_score":
+            if m in ("blur_score", "blur_norm"):
                 ax.set_yscale("log")
             if c == 0:
                 ax.set_ylabel(m)
@@ -133,7 +195,7 @@ def main():
     fig.savefig(os.path.join(OUT, "before_after.png"), dpi=90)
     plt.close(fig)
 
-    with open(os.path.join(OUT, "run.log"), "w") as f:
+    with open(os.path.join(OUT, "run.log"), "w", encoding="utf-8") as f:
         f.write("\n".join(LOG) + "\n")
 
 

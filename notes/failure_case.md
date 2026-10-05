@@ -32,4 +32,12 @@ Kết quả: `results/summary.csv`, `results/flags.csv`, `results/trend.png`; đ
 2. Chuẩn hoá blur_score theo độ sáng trước khi so ngưỡng, để không nhầm "tối" với "nhoè".
 3. Fallback: khi cờ bật, giảm trọng số camera trong fusion hoặc dựa vào LiDAR/radar (đề xuất thiết kế, chưa kiểm chứng).
 
-**Kiểm chứng ở vòng thử tiếp theo:** chạy lại `run_benchmark.py` với luật mới; kỳ vọng (cần kiểm tra, chưa đạt) là tỷ lệ cờ ở noise σ ≥ 10 và rain ≥ 1200 vệt tăng khỏi 0%, trong khi tỷ lệ cờ ở baseline vẫn ≈ 0%.
+**Đã chạy vòng thử tiếp theo** (vai C, chi tiết ở `notes/improvement.md`). Trên 6 ảnh test:
+- noise được gắn cờ 100% ở cả 4 mức (trước: 0%);
+- rain 1200 và 2400 vệt được gắn cờ 100%, nhưng rain 200 và 600 vẫn 0%;
+- baseline vẫn 0%;
+- tác dụng phụ: glare +60 nay bị cờ blur 100%.
+
+Lưu ý: từ vòng này, `results/flags.csv` là luật mới; số của luật cũ ở trên nằm trong `results/flags_old.csv`.
+
+**Kiểm chứng ở vòng thử tiếp theo (kỳ vọng ban đầu):** chạy lại `run_benchmark.py` với luật mới; kỳ vọng (cần kiểm tra, chưa đạt) là tỷ lệ cờ ở noise σ ≥ 10 và rain ≥ 1200 vệt tăng khỏi 0%, trong khi tỷ lệ cờ ở baseline vẫn ≈ 0%.
