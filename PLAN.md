@@ -49,13 +49,14 @@ Luật cờ (health rule) dùng để đo "metric có phát hiện được lỗ
 
 **Luật mới (vai C, xem `notes/improvement.md`):** cờ blur dùng `blur_norm = blur_score / mean_gray²` < 0.5×median baseline; thêm cờ nhiễu `noise_sigma` > 2×median baseline; thêm cờ mưa `streak_ratio` > 2×median baseline và không có cờ nhiễu. Ngưỡng hiệu chuẩn trên baseline 6 ảnh đầu, báo cáo tỷ lệ cờ trên 6 ảnh sau. Luật cũ vẫn được tính lại (`results/flags_old.csv`) để so sánh.
 
-## Phân công 3 thành viên (điền tên)
+## Phân công 4 thành viên
 | Vai | Người | Việc chính | Phụ trách pitch |
 |---|---|---|---|
-| A · Nguồn & dữ liệu | | Đọc paper/repo và điền mọi ô ____ ở Bước 2. Ghi nguồn và giấy phép của 12 ảnh. Điền TEAMMATES.md | Problem + Failure case |
-| B · Dữ liệu & chạy benchmark | | Kiểm tra `degrade.py` (tham số có thực tế không); tìm ảnh thật cho `data/images/` nếu có; chạy lại, lưu log/plot, đối chiếu số trong `failure_case.md` | Benchmark |
-| C · Failure case & trade-off | | Kiểm tra `metrics.py` + luật cờ; làm cải tiến (ước lượng nhiễu, chuẩn hoá theo độ sáng); nếu còn thời gian thêm detector confidence; giữ repo gọn, điền `TEAMMATES.md` | Method + Engineering decision |
+| A · Nguồn & dữ liệu | Nguyễn Công Thịnh | Đọc paper/repo và điền các ô ở Bước 2 (input/output, metric của nguồn, limitation, commit); ghi nguồn và giấy phép của 12 ảnh | Problem + Method |
+| B · Dữ liệu & chạy benchmark | Đồng Mạnh Hùng | Kiểm tra tham số `degrade.py`; chuẩn bị 12 ảnh thật trong `data/images/`; chạy benchmark, lưu log/plot; đối chiếu số trong `failure_case.md` bằng `tools/check_numbers.py` | Benchmark |
+| C · Metric & cải tiến | Nguyễn Văn Bảo | Kiểm tra `metrics.py` + luật cờ; thêm `noise_sigma`, `blur_norm`, `streak_ratio` và luật cờ mới; so cờ trước/sau (`notes/improvement.md`, `results/flags_compare.csv`) | Engineering decision |
+| D · Failure case & trade-off | Bùi Đức Thông | Rà `notes/failure_case.md`, gắn nhãn từng câu (tự đo / nguồn nói / giả thuyết); đối chiếu số với CSV; viết trade-off khi nào nên/không nên dùng health score trong ADAS | Failure case |
 
-Cả 3 người đều nộp báo cáo/slide riêng nên mỗi người phải giải thích được toàn bộ luồng, không chỉ phần mình.
+Cả 4 người đều nộp báo cáo/slide riêng nên mỗi người phải giải thích được toàn bộ luồng, không chỉ phần mình.
 
-Mốc thời gian gợi ý: 0-15 phút chốt đề (cả nhóm) · 15-45 A đọc nguồn, B+C chạy thử baseline · 45-95 B chạy lỗi, C làm luật/cải tiến, A viết failure case · 95-115 cả nhóm đối chiếu số và tập pitch.
+Mốc thời gian gợi ý: 0-15 phút chốt đề (cả nhóm) · 15-45 A đọc nguồn, B chạy thử baseline, C xem metric · 45-95 B chạy các mức lỗi, C làm luật/cải tiến, D viết failure case · 95-115 cả nhóm đối chiếu số và tập pitch.
