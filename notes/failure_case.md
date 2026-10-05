@@ -2,7 +2,7 @@
 
 Cấu hình chạy: 12 ảnh đường thật (`data/images/train1..12.png`, 256×96 px, giữ nguyên độ phân giải), seed 0.
 Kết quả: `results/summary.csv`, `results/flags.csv`, `results/trend.png`; đối chiếu số bằng `python tools/check_numbers.py`.
-**Nguồn ảnh:** `____` (nhóm điền tên dataset/nguồn, giấy phép và cách lấy 12 ảnh này).
+**Nguồn ảnh:** 12 ảnh đầu (`train1..train12.png`, phần ảnh, không lấy mask) của tập train trong bộ "cityscapes dataset" trên Kaggle (https://www.kaggle.com/datasets/shuvoalok/cityscapes). Đây là bản đăng lại, đã thu nhỏ, của Cityscapes (Cordts và cộng sự, CVPR 2016). Giấy phép Cityscapes: chỉ dùng phi thương mại, phải trích dẫn, không phân phối lại bộ dữ liệu. Ảnh chụp đường phố thành phố ở Đức vào ban ngày, thời tiết tốt, nên baseline là ảnh "sạch".
 
 ## Failure case chọn phân tích: nhiễu cảm biến làm luật "độ nét" coi ảnh xấu là ảnh nét hơn
 - **Điều kiện:** cùng 12 ảnh, thêm nhiễu Gaussian với σ = 5, 10, 20, 40 mức xám.
@@ -20,7 +20,7 @@ Kết quả: `results/summary.csv`, `results/flags.csv`, `results/trend.png`; đ
 - Blur Gaussian σ=1 (chuẩn 640 px) chỉ bị cờ 8%; từ σ=2 là 100%.
 
 ## Limitation của benchmark lớp học
-- Ảnh rất nhỏ (256×96) và nguồn/giấy phép cần ghi rõ; chỉ 12 ảnh, không có ground truth, **không chạy detector** → không kết luận được mAP hay độ chính xác.
+- Ảnh rất nhỏ (256×96, đã bị thu nhỏ từ Cityscapes gốc 2048×1024 nên mất chi tiết); chỉ 12 ảnh, đều là ban ngày trời đẹp ở thành phố Đức, không có ground truth, **không chạy detector** → không kết luận được mAP hay độ chính xác.
 - Tham số blur và rain được co theo độ phân giải so với chuẩn 640 px rộng (σ thực áp dụng = σ×0,4; số vệt mưa theo diện tích). Đây là lựa chọn của nhóm, không phải chuẩn của nguồn nào.
 - Lỗi là mô phỏng đơn giản: blur Gaussian đều (không phải nhoè do chuyển động), night chỉ nhân độ sáng (không thêm nhiễu), nhiễu Gaussian thêm sau 8-bit (không qua ISP của camera thật), mưa là vệt thẳng. Mức noise σ = 20, 40 rất nặng so với camera thật; σ = 5, 10 thực tế hơn.
 - Ngưỡng cờ hiệu chuẩn trên chính baseline (in-sample): blur_score < 350,8 và mean_gray < 32,6. Baseline vốn khá tối (mean_gray ≈ 64) nên ngưỡng tối khá thấp; đổi cảnh thì ngưỡng cần hiệu chuẩn lại.
