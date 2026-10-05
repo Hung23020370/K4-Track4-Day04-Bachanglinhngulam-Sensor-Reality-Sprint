@@ -47,6 +47,8 @@ Lý do chuyển sang mô phỏng: repo gốc đánh giá detector 3D trên datas
 
 Luật cờ (health rule) dùng để đo "metric có phát hiện được lỗi không": cờ blur nếu blur_score < 0.5×median baseline; cờ tối nếu mean_gray < 0.5×median baseline; cờ chói nếu sat_ratio > 0.05. Ngưỡng hiệu chuẩn **trên chính baseline** (in-sample).
 
+**Luật mới (vai C, xem `notes/improvement.md`):** cờ blur dùng `blur_norm = blur_score / mean_gray²` < 0.5×median baseline; thêm cờ nhiễu `noise_sigma` > 2×median baseline; thêm cờ mưa `streak_ratio` > 2×median baseline và không có cờ nhiễu. Ngưỡng hiệu chuẩn trên baseline 6 ảnh đầu, báo cáo tỷ lệ cờ trên 6 ảnh sau. Luật cũ vẫn được tính lại (`results/flags_old.csv`) để so sánh.
+
 ## Phân công 3 thành viên (điền tên)
 | Vai | Người | Việc chính | Phụ trách pitch |
 |---|---|---|---|
